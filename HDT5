@@ -1,0 +1,38 @@
+# -*- coding: cp1252 -*-
+#Autores: Diego Valdez, 15397 ; Sang Woo Shin, 15372
+#
+#------------------------------------------
+
+from SimPy.Simulation import *
+from random import uniform, Random
+
+# La clase proceso:
+class Car(Process):
+    def __init__(self,id):
+        Process.__init__(self)
+        self.name=id
+        
+    def carDriving(self,driveTime):
+        # the Process Execution Method (generator)
+        # El carro arranca su motor, en el tiempo now()
+        print "%5.1f %s started (driveTime: %f)" %(now(),self.name,driveTime)
+        # Se simula que el carro usa "driveTime" tiempo
+        # para llegar a su destino. Llega en el tiempo now()
+        yield hold,self,driveTime
+        print "%5.1f %s arrived" %(now(),self.name)
+
+initialize() #inicar la simulacion. Tiempo = 0
+
+nProcess=25
+ram = 100
+azar = Random(12345) #se puede reproducir los mismos numeros al azar
+
+for i in range(nProcess):
+    c=Car(id="Car "+ str(i)) #se crea una instancia por cada carro
+    
+    #activar los carros en la lista de simulacion. Se genera un numero
+    #al azar para indicar el tiempo que se conduce cada carro para llegar
+    #a la meta.
+    activate(c,c.carDriving(driveTime=azar.uniform(1,90)))
+    
+simulate(until=1000000) #simular para 100 unidades de tiempo
