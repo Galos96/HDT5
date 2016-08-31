@@ -3,36 +3,50 @@
 #
 #------------------------------------------
 
-from SimPy.Simulation import *
+import simpy
 from random import uniform, Random
 
-# La clase proceso:
-class Car(Process):
-    def __init__(self,id):
-        Process.__init__(self)
+class CPU:
+    def __init__(self, env):
         self.name=id
-        
-    def carDriving(self,driveTime):
-        # the Process Execution Method (generator)
-        # El carro arranca su motor, en el tiempo now()
-        print "%5.1f %s started (driveTime: %f)" %(now(),self.name,driveTime)
-        # Se simula que el carro usa "driveTime" tiempo
-        # para llegar a su destino. Llega en el tiempo now()
-        yield hold,self,driveTime
-        print "%5.1f %s arrived" %(now(),self.name)
+        self.vel = 2;
+        self.ram = simpy.Container(env, init=100, capacity=100)
+        #self.mon_proc = env.process(self.monitor_tank(env))
+         
+    """def monitor_tank(self, env):
+        while True:
+            if self.gas_tank.level < 100:
+                print('Calling tanker at %s' % env.now)
+                env.process(tanker(env, self))
+            yield env.timeout(15)"""
 
-initialize() #inicar la simulacion. Tiempo = 0
+"""def tanker(env, gas_station):
+    yield env.timeout(10)  # Need 10 Minutes to arrive
+    print('Tanker arriving at %s' % env.now)
+    amount = gas_station.gas_tank.capacity - gas_station.gas_tank.level
+    yield gas_station.gas_tank.put(amount)
 
-nProcess=25
-ram = 100
-azar = Random(12345) #se puede reproducir los mismos numeros al azar
 
-for i in range(nProcess):
-    c=Car(id="Car "+ str(i)) #se crea una instancia por cada carro
-    
-    #activar los carros en la lista de simulacion. Se genera un numero
-    #al azar para indicar el tiempo que se conduce cada carro para llegar
-    #a la meta.
-    activate(c,c.carDriving(driveTime=azar.uniform(1,90)))
-    
-simulate(until=1000000) #simular para 100 unidades de tiempo
+def car(name, env, gas_station):
+    print('Car %s arriving at %s' % (name, env.now))
+    with gas_station.fuel_dispensers.request() as req:
+        yield req
+        print('Car %s starts refueling at %s' % (name, env.now))
+        yield gas_station.gas_tank.get(40)
+        yield env.timeout(5)
+        print('Car %s done refueling at %s' % (name, env.now))"""
+
+def proc_generator(env, cpu, np):
+    for i in range(np):
+        mem=azar.randint(1,10)
+        name= "Proceso "+ str(i+1)
+        print "%5.1f %s started (Memoria: %d)" %(env.now,name,mem)
+        yield env.timeout(0)
+
+nPro=25
+azar = Random(12345)
+env = simpy.Environment()
+cpu = CPU(env)
+car_gen = env.process(proc_generator(env, cpu, nPro))
+env.run(35)
+
