@@ -5,48 +5,50 @@
 
 import simpy
 from random import uniform, Random
-
-class CPU:
-    def __init__(self, env):
-        self.name=id
-        self.vel = 2;
-        self.ram = simpy.Container(env, init=100, capacity=100)
-        #self.mon_proc = env.process(self.monitor_tank(env))
+global ram, vel, azar, cpuC
          
-    """def monitor_tank(self, env):
-        while True:
-            if self.gas_tank.level < 100:
-                print('Calling tanker at %s' % env.now)
-                env.process(tanker(env, self))
-            yield env.timeout(15)"""
 
-"""def tanker(env, gas_station):
-    yield env.timeout(10)  # Need 10 Minutes to arrive
-    print('Tanker arriving at %s' % env.now)
-    amount = gas_station.gas_tank.capacity - gas_station.gas_tank.level
-    yield gas_station.gas_tank.put(amount)
+def new(env, tgen, mem, name, ins):
+    # new        
+    yield env.timeout(tgen)
+    print('%5.1f %s solicita %d de RAM' % (env.now, name, mem))
+    yield ram.get(mem)
+    print('%5.1f La petición es acpetada, %s ha ocupado %d de RAM' % (env.now, name, mem))
+    yield env.process(ready_running(env, tgen, mem, name, ins))
 
-
-def car(name, env, gas_station):
-    print('Car %s arriving at %s' % (name, env.now))
-    with gas_station.fuel_dispensers.request() as req:
-        yield req
-        print('Car %s starts refueling at %s' % (name, env.now))
-        yield gas_station.gas_tank.get(40)
-        yield env.timeout(5)
-        print('Car %s done refueling at %s' % (name, env.now))"""
-
-def proc_generator(env, cpu, np):
-    for i in range(np):
-        mem=azar.randint(1,10)
-        name= "Proceso "+ str(i+1)
-        print "%5.1f %s started (Memoria: %d)" %(env.now,name,mem)
-        yield env.timeout(0)
+def ready_running(env, tgen, mem, name, ins):
+    insCpu= 0
+    while insCpu<ins:
+        print('%5.1f (Ready)%s ' % (env.now, name))
+        with cpuC.request() as reqC:
+            if (ins-insCpu)>= vel:
+                insHechas = vel
+            else:
+                insHechas = ins-insCpu
+        print('%5.1f (Running)El CPU ha realizado %d instrucciones del %s (%d/%d)' % (env.now,  insHechas, name, insCpu+insHechas, ins ))
+        yield env.timeout(insHechas/vel) 
+        insCpu = insCpu + insHechas
+        wait=azar.randint(1,2)
+        if wait == 1 and insCpu<ins:
+            print('%5.1f (Waiting)%s' % (env.now, name))
+            yield env.timeout(azar.uniform(0.5,1.5))
+    print('%5.1f (Terminated)%s' % (env.now, name))
+    yield ram.put(mem)
+        
+        
+        
 
 nPro=25
 azar = Random(12345)
 env = simpy.Environment()
-cpu = CPU(env)
-car_gen = env.process(proc_generator(env, cpu, nPro))
-env.run(35)
+vel = 3;
+cpuC = simpy.Resource (env, capacity=1)
+ram = simpy.Container(env, init=100, capacity=100)
+for i in range(nPro):
+    mem=azar.randint(1,10)
+    name= "Proceso "+ str(i+1)
+    ins=azar.randint(1,10)
+    tgen= azar.expovariate(1.0/10)
+    env.process(new(env, tgen, mem, name, ins))
+env.run(100000)
 
