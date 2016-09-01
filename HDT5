@@ -7,18 +7,22 @@ import simpy
 from random import uniform, Random
 global ram, vel, azar, cpuC,times,start
          
-
+#Donde se crean los procesos y se espera por espacios de memoria
 def new(env, tgen, mem, name, ins):
-    # new        
+    #tiempo para crearse el proceso        
     yield env.timeout(tgen)
     print('%5.1f %s solicita %d de RAM' % (env.now, name, mem))
+    #El tiempo actual
     start=env.now
+    #Se pide un espacio de memoria y espera hasta tener el espacio correcto
     yield ram.get(mem)
     print('%5.1f La petición es aceptada, %s ha ocupado %d de RAM' % (env.now, name, mem))
+    #Ir al ready
     yield env.process(ready_running(env, tgen, mem, name, ins))
 
 def ready_running(env, tgen, mem, name, ins):
     insCpu= 0
+    #esta en Ready y espera para correrse las instrucciones
     while insCpu<ins:
         print('%5.1f (Ready)%s ' % (env.now, name))
         with cpuC.request() as reqC:
@@ -29,22 +33,26 @@ def ready_running(env, tgen, mem, name, ins):
         print('%5.1f (Running)El CPU ha realizado %d instrucciones del %s (%d/%d)' % (env.now,  insHechas, name, insCpu+insHechas, ins ))
         yield env.timeout(insHechas/vel) 
         insCpu = insCpu + insHechas
+        #Hacer un random para ver si va a wait o regresa a ready
         wait=azar.randint(1,2)
         if wait == 1 and insCpu<ins:
             print('%5.1f (Waiting)%s' % (env.now, name))
             yield env.timeout(azar.uniform(1,3))
+    #Termino el proceso
     print('%5.1f (Terminated)%s' % (env.now, name))
     yield ram.put(mem)
     times.append(env.now-start)    
-        
+#Atributos
 start=0
 nPro=200
 azar = Random(12345)
 env = simpy.Environment()
 vel = 6
 times=[]
+#Ambiente simulador
 cpuC = simpy.Resource (env, capacity=1)
 ram = simpy.Container(env, init=100, capacity=100)
+#Crea todos los procesos
 for i in range(nPro):
     mem=azar.randint(1,10)
     name= "Proceso "+ str(i+1)
@@ -52,13 +60,13 @@ for i in range(nPro):
     tgen= azar.expovariate(1.0/1)
     env.process(new(env, tgen, mem, name, ins))
 env.run()
-
+#consigue el promedio de corrida de los procesos
 suma=0
 for i in times:
     suma=suma+i
 ave=suma/nPro
 print('El promedio de todos los procesos fue de: %f' %(ave))
-
+#La desviacion estandar de los procesos
 suma2=0
 for i in times:
     suma2+=(i-ave)**2
